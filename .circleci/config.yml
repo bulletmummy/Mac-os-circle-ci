@@ -1,64 +1,65 @@
 # ═══════════════════════════════════════════════════════════
-# 🔥 CIRCLECI WINDOWS 32 GB RAM EXECUTION ENGINE 🔥
-# Architecture: Windows Server 2022 | 8 vCPUs | 32 GB RAM
+# 🔥 CIRCLECI WINDOWS HIGH-SPECIFICATION ENGINE 🔥
+# Tier Option A (xlarge) : 16 vCPUs | 64 GB RAM
+# Tier Option B (2xlarge): 32 vCPUs | 128 GB RAM
 # ═══════════════════════════════════════════════════════════
 
 version: 2.1
 
-# Import the official Windows environment controller
 orbs:
   win: circleci/windows@5.0.0
 
 jobs:
-  launch-windows-sandbox:
-    # Use the pre-configured Windows executor from the orb
+  launch-highspec-windows:
     executor:
       name: win/server-2022
-      # 'large' assigns 8 vCPUs and exactly 32 GB RAM (Costs 120 credits/min)
-      size: "large"
+      # Change "2xlarge" to "xlarge" if you want to scale down to 64 GB RAM
+      size: "2xlarge" 
 
     steps:
-      - checkout  # Pulls your repository files into the environment
+      # - checkout (Line removed permanently to bypass SSH key verification blocks)
 
       - run:
-          name: Verify Windows System Specifications
+          name: Audit System CPU and Physical RAM Capacity
           shell: powershell.exe
           command: |
-            Write-Host "=== WINDOWS OS DETAILS ==="
-            Get-ComputerInfo | Select-Object OsName, OsVersion, OsArchitecture
+            Write-Host "===================================================="
+            Write-Host "Checking Allocated Compute Specifications..."
+            Write-Host "===================================================="
             
-            Write-Host "=== HARDWARE TOTAL MEMORY ==="
-            $TargetRAM = (Get-CimInstance Win32_PhysicalMemory | Measure-Object -Property Capacity -Sum).Sum
-            if (!$TargetRAM) {
-                # Fallback if virtual hardware abstracts raw chips
-                $TargetRAM = (Get-WmiObject -Class Win32_ComputerSystem).TotalPhysicalMemory
+            # Fetch total core count
+            $Cores = (Get-WmiObject -Class Win32_Processor).NumberOfCores
+            Write-Host "Allocated CPU Cores: $Cores vCPUs"
+            
+            # Fetch physical memory allocations mapped directly from the hypervisor
+            $TotalMemory = (Get-CimInstance Win32_PhysicalMemory -ErrorAction SilentlyContinue | Measure-Object -Property Capacity -Sum).Sum
+            if (!$TotalMemory) {
+                $TotalMemory = (Get-WmiObject -Class Win32_ComputerSystem).TotalPhysicalMemory
             }
-            [Math]::Round($TargetRAM / 1GB) | Out-String -Stream | ForEach-Object { Write-Host "$_ GB of RAM Installed" }
+            $RAMInGB = [Math]::Round($TotalMemory / 1GB)
+            Write-Host "Allocated Memory: $RAMInGB GB of RAM"
+            Write-Host "===================================================="
 
       - run:
-          name: Set Up Dependencies (Chocolatey / OpenSSH)
+          name: High-Performance Infrastructure Keepalive
+          no_output_timeout: 45m
           shell: powershell.exe
           command: |
-            Write-Host "Setting up networking components..."
-            # Windows executors have Chocolatey pre-installed to pull tools instantly
-            # choco install -y git curl
-
-      - run:
-          name: Execution Keep-Alive Engine
-          no_output_timeout: 30m
-          shell: powershell.exe
-          command: |
-            Write-Host "Windows Core System Listening and Online..."
-            $Stopwatch = 0
-            # Free tier runs for a maximum of 60 minutes (1 hour) before timing out
-            while ($Stopwatch -lt 11) {
-                Write-Host "[$(Get-Date)] Keep-Alive Heartbeat Active..."
+            Write-Host "System execution window successfully initiated."
+            
+            # Custom automated scripts or environment configurations go here
+            
+            $Timer = 0
+            # Loops safely to hold the high-tier instance active before the time cap finishes
+            while ($Timer -lt 11) {
+                Write-Host "[$(Get-Date)] High-Tier Infrastructure Run State: Normal..."
                 Start-Sleep -Seconds 300
-                $Stopwatch++
+                $Timer++
             }
+            Write-Host "Pipeline execution sequence complete."
 
 workflows:
   version: 2
-  run-windows-pipeline:
+  run-highspec-pipeline:
     jobs:
-      - launch-windows-sandbox
+      - launch-highspec-windows
