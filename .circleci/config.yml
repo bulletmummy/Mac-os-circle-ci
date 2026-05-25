@@ -1,0 +1,61 @@
+# ═══════════════════════════════════════════════════════════
+# 🔥 CIRCLECI NATIVE MACOS EXECUTION ENGINE 🔥
+# Architecture: Apple Silicon / macOS Virtual Machine
+# ═══════════════════════════════════════════════════════════
+
+version: 2.1
+
+jobs:
+  launch-macos-environment:
+    # Specifies the use of CircleCI's dedicated macOS resource pool
+    macos:
+      xcode: 15.2.0  # Defines the macOS/Xcode version image to boot
+
+    # Resource class specifies the hardware allocation (e.g., medium, large)
+    resource_class: macos.m1.medium
+
+    steps:
+      - checkout  # Pulls repository code into the working directory
+
+      - run:
+          name: Verify System Hardware and OS Details
+          command: |
+            echo "=== SYSTEM INFORMATION ==="
+            sw_vers
+            echo "=== HARDWARE ARCHITECTURE ==="
+            uname -m
+            echo "=== AVAILABLE RAM ==="
+            sysctl hw.memsize | awk '{print $2 / 1024 / 1024 / 1024 " GB"}'
+
+      - run:
+          name: Initialize Environment Dependencies
+          command: |
+            echo "Installing necessary command-line utilities via Homebrew..."
+            # CircleCI macOS images come with Homebrew pre-installed
+            brew install jq curl git
+
+      - run:
+          name: Execute Core Automation Tasks
+          command: |
+            echo "Executing your custom scripts or compilation commands here..."
+            # Placeholder for your specific runtime execution logic
+            
+      - run:
+          name: Execution Keep-Alive Window
+          # Set a timeout limit to prevent the job from hanging indefinitely if blocked
+          no_output_timeout: 30m
+          command: |
+            echo "Maintaining active execution environment..."
+            # Standard monitoring loop for background execution
+            STOPWATCH=0
+            while [ $STOPWATCH -lt 12 ]; do
+              echo "[$(date)] macOS Virtual Machine Active..."
+              sleep 300
+              STOPWATCH=$((STOPWATCH+1))
+            done
+
+workflows:
+  version: 2
+  run-pipeline:
+    jobs:
+      - launch-macos-environment
