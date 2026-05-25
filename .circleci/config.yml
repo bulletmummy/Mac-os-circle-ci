@@ -1,7 +1,6 @@
 # ═══════════════════════════════════════════════════════════
-# 🔥 CIRCLECI WINDOWS HIGH-SPECIFICATION ENGINE 🔥
-# Tier Option A (xlarge) : 16 vCPUs | 64 GB RAM
-# Tier Option B (2xlarge): 32 vCPUs | 128 GB RAM
+# 🔥 CIRCLECI WINDOWS WEB-STREAMED DESKTOP ENGINE 🔥
+# 32 GB RAM | Built-in Auto Connect Gateway
 # ═══════════════════════════════════════════════════════════
 
 version: 2.1
@@ -10,56 +9,73 @@ orbs:
   win: circleci/windows@5.0.0
 
 jobs:
-  launch-highspec-windows:
+  launch-windows-sandbox:
     executor:
       name: win/server-2022
-      # Change "2xlarge" to "xlarge" if you want to scale down to 64 GB RAM
-      size: "2xlarge" 
+      size: "large" # Allocates 32 GB RAM. Change to "xlarge" for 64 GB RAM
 
     steps:
-      # - checkout (Line removed permanently to bypass SSH key verification blocks)
-
       - run:
-          name: Audit System CPU and Physical RAM Capacity
+          name: Set Up Interactive Web Streaming Layer
           shell: powershell.exe
           command: |
-            Write-Host "===================================================="
-            Write-Host "Checking Allocated Compute Specifications..."
-            Write-Host "===================================================="
+            Write-Host "Installing networking tools and streaming canvas..."
+            # Installs a lightweight web screen broadcaster
+            choco install choco-fast-vncwebsockify websockify -y --no-progress
             
-            # Fetch total core count
-            $Cores = (Get-WmiObject -Class Win32_Processor).NumberOfCores
-            Write-Host "Allocated CPU Cores: $Cores vCPUs"
-            
-            # Fetch physical memory allocations mapped directly from the hypervisor
-            $TotalMemory = (Get-CimInstance Win32_PhysicalMemory -ErrorAction SilentlyContinue | Measure-Object -Property Capacity -Sum).Sum
-            if (!$TotalMemory) {
-                $TotalMemory = (Get-WmiObject -Class Win32_ComputerSystem).TotalPhysicalMemory
-            }
-            $RAMInGB = [Math]::Round($TotalMemory / 1GB)
-            Write-Host "Allocated Memory: $RAMInGB GB of RAM"
-            Write-Host "===================================================="
+            Write-Host "Downloading secure network tunnel..."
+            Invoke-WebRequest -Uri "https://bin.equinox.io/c/b341h221msn/ngrok-v3-stable-windows-amd64.zip" -OutFile "ngrok.zip"
+            Expand-Archive -Path "ngrok.zip" -DestinationPath "."
 
       - run:
-          name: High-Performance Infrastructure Keepalive
-          no_output_timeout: 45m
+          name: Initialize Remote Access Server
           shell: powershell.exe
           command: |
-            Write-Host "System execution window successfully initiated."
+            Write-Host "Configuring secure user access..."
+            # Changes the internal password to allow remote control
+            $Password = ConvertTo-SecureString "BulletCloudPass123!" -AsPlainText -Force
+            Set-LocalUser -Name "circleci" -Password $Password
             
-            # Custom automated scripts or environment configurations go here
+            # Starts the web desktop broadcaster service in the background
+            Start-Process -FilePath "vncwebsockify" -ArgumentList "--port 6080" -WindowStyle Hidden
+
+      - run:
+          name: Launch Public Connection Tunnel & Print Access Link
+          no_output_timeout: 55m
+          shell: powershell.exe
+          command: |
+            # Link your secure token from CircleCI environment settings
+            .\ngrok.exe config add-authtoken "$env:NGROK_TOKEN"
             
+            Write-Host "Deploying connection architecture..."
+            Start-Process -FilePath ".\ngrok.exe" -ArgumentList "http 6080 --log=stdout" -WindowStyle Hidden
+            Start-Sleep -Seconds 10
+            
+            # Fetches the dynamically generated public web link
+            $NgrokApi = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels"
+            $PublicUrl = $NgrokApi.tunnels[0].public_url
+            
+            Write-Host "===================================================="
+            Write-Host "🔥 YOUR 32 GB WINDOWS RUNNER IS FULLY LIVE! 🔥"
+            Write-Host "===================================================="
+            Write-Host "👉 COPY AND PASTE THIS LINK INTO YOUR WEB BROWSER:"
+            Write-Host "$PublicUrl/vnc.html?autoconnect=true"
+            Write-Host "===================================================="
+            Write-Host "Log in credentials inside the page:"
+            Write-Host "Username: circleci"
+            Write-Host "Password: BulletCloudPass123!"
+            Write-Host "===================================================="
+            
+            # Continuous Loop keeps the machine alive for up to 55 minutes
             $Timer = 0
-            # Loops safely to hold the high-tier instance active before the time cap finishes
             while ($Timer -lt 11) {
-                Write-Host "[$(Get-Date)] High-Tier Infrastructure Run State: Normal..."
+                Write-Host "[$(Get-Date)] Stream Active. Waiting for inputs..."
                 Start-Sleep -Seconds 300
                 $Timer++
             }
-            Write-Host "Pipeline execution sequence complete."
 
 workflows:
   version: 2
-  run-highspec-pipeline:
+  run-windows-pipeline:
     jobs:
-      - launch-highspec-windows
+      - launch-windows-sandbox
