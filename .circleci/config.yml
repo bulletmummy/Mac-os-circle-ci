@@ -1,61 +1,64 @@
 # ═══════════════════════════════════════════════════════════
-# 🔥 CIRCLECI NATIVE MACOS EXECUTION ENGINE 🔥
-# Architecture: Apple Silicon / macOS Virtual Machine
+# 🔥 CIRCLECI WINDOWS 32 GB RAM EXECUTION ENGINE 🔥
+# Architecture: Windows Server 2022 | 8 vCPUs | 32 GB RAM
 # ═══════════════════════════════════════════════════════════
 
 version: 2.1
 
-jobs:
-  launch-macos-environment:
-    # Specifies the use of CircleCI's dedicated macOS resource pool
-    macos:
-      xcode: 15.2.0  # Defines the macOS/Xcode version image to boot
+# Import the official Windows environment controller
+orbs:
+  win: circleci/windows@5.0.0
 
-    # Resource class specifies the hardware allocation (e.g., medium, large)
-    resource_class: macos.m1.medium
+jobs:
+  launch-windows-sandbox:
+    # Use the pre-configured Windows executor from the orb
+    executor:
+      name: win/server-2022
+      # 'large' assigns 8 vCPUs and exactly 32 GB RAM (Costs 120 credits/min)
+      size: "large"
 
     steps:
-      - checkout  # Pulls repository code into the working directory
+      - checkout  # Pulls your repository files into the environment
 
       - run:
-          name: Verify System Hardware and OS Details
+          name: Verify Windows System Specifications
+          shell: powershell.exe
           command: |
-            echo "=== SYSTEM INFORMATION ==="
-            sw_vers
-            echo "=== HARDWARE ARCHITECTURE ==="
-            uname -m
-            echo "=== AVAILABLE RAM ==="
-            sysctl hw.memsize | awk '{print $2 / 1024 / 1024 / 1024 " GB"}'
-
-      - run:
-          name: Initialize Environment Dependencies
-          command: |
-            echo "Installing necessary command-line utilities via Homebrew..."
-            # CircleCI macOS images come with Homebrew pre-installed
-            brew install jq curl git
-
-      - run:
-          name: Execute Core Automation Tasks
-          command: |
-            echo "Executing your custom scripts or compilation commands here..."
-            # Placeholder for your specific runtime execution logic
+            Write-Host "=== WINDOWS OS DETAILS ==="
+            Get-ComputerInfo | Select-Object OsName, OsVersion, OsArchitecture
             
+            Write-Host "=== HARDWARE TOTAL MEMORY ==="
+            $TargetRAM = (Get-CimInstance Win32_PhysicalMemory | Measure-Object -Property Capacity -Sum).Sum
+            if (!$TargetRAM) {
+                # Fallback if virtual hardware abstracts raw chips
+                $TargetRAM = (Get-WmiObject -Class Win32_ComputerSystem).TotalPhysicalMemory
+            }
+            [Math]::Round($TargetRAM / 1GB) | Out-String -Stream | ForEach-Object { Write-Host "$_ GB of RAM Installed" }
+
       - run:
-          name: Execution Keep-Alive Window
-          # Set a timeout limit to prevent the job from hanging indefinitely if blocked
-          no_output_timeout: 30m
+          name: Set Up Dependencies (Chocolatey / OpenSSH)
+          shell: powershell.exe
           command: |
-            echo "Maintaining active execution environment..."
-            # Standard monitoring loop for background execution
-            STOPWATCH=0
-            while [ $STOPWATCH -lt 12 ]; do
-              echo "[$(date)] macOS Virtual Machine Active..."
-              sleep 300
-              STOPWATCH=$((STOPWATCH+1))
-            done
+            Write-Host "Setting up networking components..."
+            # Windows executors have Chocolatey pre-installed to pull tools instantly
+            # choco install -y git curl
+
+      - run:
+          name: Execution Keep-Alive Engine
+          no_output_timeout: 30m
+          shell: powershell.exe
+          command: |
+            Write-Host "Windows Core System Listening and Online..."
+            $Stopwatch = 0
+            # Free tier runs for a maximum of 60 minutes (1 hour) before timing out
+            while ($Stopwatch -lt 11) {
+                Write-Host "[$(Get-Date)] Keep-Alive Heartbeat Active..."
+                Start-Sleep -Seconds 300
+                $Stopwatch++
+            }
 
 workflows:
   version: 2
-  run-pipeline:
+  run-windows-pipeline:
     jobs:
-      - launch-macos-environment
+      - launch-windows-sandbox
