@@ -12,7 +12,7 @@ jobs:
   launch-windows-sandbox:
     executor:
       name: win/server-2022
-      size: "xlarge" # Allocates 32 GB RAM. Change to "xlarge" for 64 GB RAM
+      size: "large" # Allocates 32 GB RAM. Change to "xlarge" for 64 GB RAM
 
     steps:
       - run:
